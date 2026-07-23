@@ -2,7 +2,7 @@
 
 ![Chronos Hub Header Banner](public/favicon.svg)
 
-> **Chronos Hub** adalah aplikasi web **Progressive Web App (PWA)** modern, responsif, dan kaya fitur yang dirancang untuk mengelola kegiatan harian, agenda kalender ala Google Calendar, manajemen tugas dengan Papan Kanban & Matriks Eisenhower, serta pengumuman penting yang tersinkronisasi otomatis ke cloud.
+> **Chronos Hub** adalah aplikasi web **Progressive Web App (PWA)** modern, responsif, dan kaya fitur yang dirancang untuk mengelola kegiatan harian, agenda kalender ala Google Calendar, manajemen tugas dengan Papan Kanban, Matriks Eisenhower & Riwayat Rekapan Bulanan, serta pengumuman penting yang tersinkronisasi otomatis ke cloud.
 
 ---
 
@@ -20,29 +20,37 @@
 - **Sub-task / Checklist**: Progres bar checklist interaktif pada setiap tugas.
 - **Efek Selebrasi Confetti**: Animasi kembang api *confetti* saat menyelesaikan tugas.
 
-### 📢 3. Spanduk Pengumuman & Alert Kegiatan
+### 📜 3. Riwayat Tugas & Rekapan Bulanan (Task History & Monthly Analytics) [NEW]
+- **Arsip Permanen**: Seluruh tugas selesai tersimpan secara otomatis beserta catatan waktu penyelesaian (`completedAt`).
+- **Analisis & Statistik Rekapan**: Kartu ringkasan total tugas selesai, rasio checklist sub-tugas, kategori terproduktif, dan jumlah tugas urgent/high.
+- **Filter Periode Bulan**: Filter rekapan bulanan (*Juli 2026, Juni 2026, dll.*) atau *Semua Waktu*.
+- **Visual Progress Bar**: Grafik persentase penyelesaian tugas per kategori dan breakdown per prioritas.
+- **Export Rekapan CSV**: Fitur unduh laporan rekapan bulanan dalam format spreadsheet `.csv`.
+- **Fitur Restore (Kembalikan ke To-Do)**: Tombol pemulihan tugas kembali ke daftar aktif.
+
+### 📢 4. Spanduk Pengumuman & Alert Kegiatan
 - Spanduk pengumuman atas untuk agenda-agenda kritis terdekat.
 - Opsi otomatis publikasi agenda kalender ke Spanduk Pengumuman.
 - Penanda pengumuman belum dibaca (*Unread Badge*) yang otomatis hilang saat dibaca.
 
-### 🔒 4. Keamanan App Lock PIN & Fitur Privasi
+### 🔒 5. Keamanan App Lock PIN & Fitur Privasi
 - Pola penguncian Layar PIN (*Passcode Lock Screen*).
 - **Auto-Lock**: Aplikasi otomatis mengunci sendiri saat beralih tab browser atau layar HP mati.
 
-### 🔥 5. Firebase Cloud & Multi-User Auth Isolation
+### 🔥 6. Firebase Cloud & Multi-User Auth Isolation
 - **Firebase Authentication**: Login Email/Password dan Google OAuth.
 - **Isolasi Data**: Setiap pengguna memiliki data dashboard privat yang terpisah di Firebase Realtime Database (`user_dashboards/{uid}`).
 - **Koneksi Otomatis Zero-Setup**: Langsung terhubung secara otomatis di perangkat mana pun tanpa perlu input API Key.
 
-### 🎨 6. 15 Tema Warna Preset & Custom HEX Picker
+### 🎨 7. 15 Tema Warna Preset & Custom HEX Picker
 - 15 Pilihan tema warna (*Royal Blue, Emerald, Sunset Orange, Cyberpunk Purple, Emerald Dark, Mocha Gold, dll.*).
 - **Custom HEX Color Picker**: Masukkan kode HEX (`#hexCode`) untuk kustomisasi warna aksen dinamis secara real-time.
 
-### 📲 7. Progressive Web App (PWA) Ready
+### 📲 8. Progressive Web App (PWA) Ready
 - Service Worker (`sw.js`) untuk dukungan offline.
 - Tombol **📱 Install App** 1-Klik di navigasi atas untuk memasukkan aplikasi ke layar utama HP (Android / iOS) atau Laptop.
 
-### 🔔 8. Web Notification API & Alert Ringtone Synthesizer
+### 🔔 9. Web Notification API & Alert Ringtone Synthesizer
 - Notifikasi pengingat otomatis browser (H-7, H-5, H-3, H-1, dan Hari H).
 - **5 Opsi Nada Dering Synthesizer**: *Standard Bell, Digital Chime, Gentle Harp, Loud Alarm, Radar Pulse*.
 
