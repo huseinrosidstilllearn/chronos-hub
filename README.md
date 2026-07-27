@@ -20,8 +20,10 @@
 - **Sub-task / Checklist**: Progres bar checklist interaktif pada setiap tugas.
 - **Efek Selebrasi Confetti**: Animasi kembang api *confetti* saat menyelesaikan tugas.
 
-### 📜 3. Riwayat Tugas & Rekapan Bulanan (Task History & Monthly Analytics) [NEW]
-- **Arsip Permanen**: Seluruh tugas selesai tersimpan secara otomatis beserta catatan waktu penyelesaian (`completedAt`).
+### 📜 3. Riwayat Tugas Independen & Rekapan Bulanan (Task History & Analytics) [v1.1.1 Patch Fix]
+- **Pengarsipan Permanen Mandiri**: Seluruh tugas selesai tersimpan secara otomatis di database riwayat independen (`taskHistory`) beserta catatan waktu penyelesaian (`completedAt`).
+- **Perlindungan Hapus Daftar Aktif**: Menghapus tugas dari papan aktif (Kanban/List) **TIDAK AKAN** menghapus riwayat tugas yang sudah selesai. Data rekapan bulanan Anda tetap aman 100%!
+- **Rekonsiliasi Otomatis v1.1.1**: Penjaminan tugas baru (`To Do`) 100% masuk ke daftar To Do dan tidak akan masuk ke Riwayat sebelum diselesaikan.
 - **Analisis & Statistik Rekapan**: Kartu ringkasan total tugas selesai, rasio checklist sub-tugas, kategori terproduktif, dan jumlah tugas urgent/high.
 - **Filter Periode Bulan**: Filter rekapan bulanan (*Juli 2026, Juni 2026, dll.*) atau *Semua Waktu*.
 - **Visual Progress Bar**: Grafik persentase penyelesaian tugas per kategori dan breakdown per prioritas.

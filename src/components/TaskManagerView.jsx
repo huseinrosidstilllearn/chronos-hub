@@ -34,12 +34,15 @@ import { formatDateDDMMYYYY, formatDateIndonesian } from '../utils/dateUtils';
 
 export default function TaskManagerView({ 
   tasks, 
+  taskHistory = [],
   categories, 
   onOpenAddModal, 
   onToggleTaskStatus, 
   onToggleSubtask, 
   onOpenEditTask, 
-  onDeleteTask 
+  onDeleteTask,
+  onDeleteHistoryTask,
+  onRestoreHistoryTask
 }) {
   const [layoutMode, setLayoutMode] = useState('kanban'); // 'kanban' | 'list' | 'matrix' | 'history'
   const [searchQuery, setSearchQuery] = useState('');
@@ -73,8 +76,29 @@ export default function TaskManagerView({
 
   const getCategoryObj = (catId) => categories.find(c => c.id === catId) || { label: catId, color: '#3b82f6', bgClass: 'badge-category-work' };
 
-  // All completed tasks
-  const completedTasksAll = tasks.filter(t => t.status === 'done');
+  // Combine permanent taskHistory and completed tasks from active tasks array (eliminating duplicates)
+  const historyMap = new Map();
+
+  (taskHistory || []).forEach(t => {
+    if (t && t.id) historyMap.set(t.id, t);
+  });
+
+  (tasks || []).filter(t => t.status === 'done').forEach(t => {
+    if (t && t.id) {
+      if (!historyMap.has(t.id)) {
+        historyMap.set(t.id, t);
+      } else {
+        const existing = historyMap.get(t.id);
+        historyMap.set(t.id, { ...existing, ...t, status: 'done' });
+      }
+    }
+  });
+
+  const completedTasksAll = Array.from(historyMap.values()).sort((a, b) => {
+    const dateA = new Date(a.completedAt || a.dueDate || 0);
+    const dateB = new Date(b.completedAt || b.dueDate || 0);
+    return dateB - dateA;
+  });
 
   // Extract unique Month-Years from completed tasks for the dropdown filter
   const availableMonthsMap = {};
@@ -103,12 +127,15 @@ export default function TaskManagerView({
     return matchesSearch && matchesPriority && matchesCategory;
   });
 
-  // Filter for Completed History View with Month Filter
-  const filteredHistoryTasks = filteredTasks.filter(task => {
-    if (task.status !== 'done') return false;
-    if (selectedMonthYear === 'all') return true;
+  // Filter for Completed History View with Search, Priority, Category & Month Filters
+  const filteredHistoryTasks = completedTasksAll.filter(task => {
+    const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (task.notes && task.notes.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesPriority = selectedPriority === 'all' || task.priority === selectedPriority;
+    const matchesCategory = selectedCategory === 'all' || task.category === selectedCategory;
     const taskDate = task.completedAt || task.dueDate || task.date;
-    return taskDate && taskDate.startsWith(selectedMonthYear);
+    const matchesMonth = selectedMonthYear === 'all' || (taskDate && taskDate.startsWith(selectedMonthYear));
+    return matchesSearch && matchesPriority && matchesCategory && matchesMonth;
   });
 
   // Monthly Recap Calculations
@@ -829,7 +856,7 @@ export default function TaskManagerView({
                         {/* Action buttons */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                           <button 
-                            onClick={() => handleStatusChange(task.id, 'to-do')}
+                            onClick={() => onRestoreHistoryTask ? onRestoreHistoryTask(task.id) : handleStatusChange(task.id, 'to-do')}
                             className="btn btn-secondary btn-sm"
                             style={{ fontSize: '0.75rem', gap: '0.3rem' }}
                             title="Kembalikan tugas ke daftar Belum Selesai (To-Do)"
@@ -841,7 +868,7 @@ export default function TaskManagerView({
                             <Edit size={14} />
                           </button>
 
-                          <button onClick={() => onDeleteTask(task.id)} className="btn btn-secondary btn-icon" style={{ width: '32px', height: '32px', color: '#f87171' }} title="Hapus dari Riwayat">
+                          <button onClick={() => onDeleteHistoryTask ? onDeleteHistoryTask(task.id) : onDeleteTask(task.id)} className="btn btn-secondary btn-icon" style={{ width: '32px', height: '32px', color: '#f87171' }} title="Hapus Permanen dari Riwayat">
                             <Trash2 size={14} />
                           </button>
                         </div>

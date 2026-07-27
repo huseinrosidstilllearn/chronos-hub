@@ -81,6 +81,12 @@ export default function App() {
     return saved ? JSON.parse(saved) : INITIAL_TASKS;
   });
 
+  // Permanent Task History State (Persists even when deleted from active tasks list)
+  const [taskHistory, setTaskHistory] = useState(() => {
+    const saved = localStorage.getItem('chronos_task_history');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   // Modal States
   const [modalType, setModalType] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
@@ -148,6 +154,7 @@ export default function App() {
     localStorage.setItem('chronos_announcements', JSON.stringify(announcements));
     localStorage.setItem('chronos_activities', JSON.stringify(activities));
     localStorage.setItem('chronos_tasks', JSON.stringify(tasks));
+    localStorage.setItem('chronos_task_history', JSON.stringify(taskHistory));
     localStorage.setItem('chronos_read_announcements', JSON.stringify(readAnnouncementIds));
 
     // Cloud Sync to Firebase Realtime DB if authenticated
@@ -156,6 +163,7 @@ export default function App() {
         habits,
         activities,
         tasks,
+        taskHistory,
         announcements,
         readAnnouncementIds,
         theme: currentTheme,
@@ -163,10 +171,44 @@ export default function App() {
         userName
       });
     }
-  }, [habits, announcements, activities, tasks, readAnnouncementIds, currentTheme, customHex, userName, firebaseConnected, authUser]);
+  }, [habits, announcements, activities, tasks, taskHistory, readAnnouncementIds, currentTheme, customHex, userName, firebaseConnected, authUser]);
 
-  // Ref to track if cloud data has been loaded once on login (prevents race conditions)
-  const hasLoadedCloudOnce = React.useRef(false);
+  // Auto-Recovery & Reconciliation Effect: Ensure taskHistory only contains truly completed tasks
+  useEffect(() => {
+    setTaskHistory(prevHist => {
+      const activeNonDoneIds = new Set(
+        (tasks || []).filter(t => t && t.status !== 'done').map(t => t.id)
+      );
+
+      const histMap = new Map();
+      (prevHist || []).forEach(h => {
+        // Exclude tasks that are active in tasks with status !== 'done'
+        if (h && h.id && !activeNonDoneIds.has(h.id)) {
+          histMap.set(h.id, h);
+        }
+      });
+
+      let changed = (prevHist || []).length !== histMap.size;
+
+      // Recover from active tasks with status === 'done'
+      (tasks || []).filter(t => t && t.status === 'done').forEach(t => {
+        if (t && t.id && !histMap.has(t.id)) {
+          histMap.set(t.id, {
+            ...t,
+            completedAt: t.completedAt || new Date().toISOString()
+          });
+          changed = true;
+        }
+      });
+
+      if (changed) {
+        const cleaned = Array.from(histMap.values());
+        localStorage.setItem('chronos_task_history', JSON.stringify(cleaned));
+        return cleaned;
+      }
+      return prevHist;
+    });
+  }, [tasks]);
 
   // Initialize Firebase Cloud & Auth State Listener on Mount
   useEffect(() => {
@@ -201,6 +243,7 @@ export default function App() {
                 if (cloudData.habits && Array.isArray(cloudData.habits)) setHabits(cloudData.habits);
                 if (cloudData.activities && Array.isArray(cloudData.activities)) setActivities(cloudData.activities);
                 if (cloudData.tasks && Array.isArray(cloudData.tasks)) setTasks(cloudData.tasks);
+                if (cloudData.taskHistory && Array.isArray(cloudData.taskHistory)) setTaskHistory(cloudData.taskHistory);
                 if (cloudData.announcements && Array.isArray(cloudData.announcements)) setAnnouncements(cloudData.announcements);
                 if (cloudData.readAnnouncementIds) setReadAnnouncementIds(cloudData.readAnnouncementIds);
                 if (cloudData.theme) setCurrentTheme(cloudData.theme);
@@ -305,6 +348,25 @@ export default function App() {
   };
 
   // Task Handlers
+  const saveToTaskHistory = (taskItem) => {
+    if (!taskItem) return;
+    const historyItem = {
+      ...taskItem,
+      status: 'done',
+      completedAt: taskItem.completedAt || new Date().toISOString()
+    };
+    setTaskHistory(prev => {
+      const existingIdx = prev.findIndex(h => h.id === historyItem.id);
+      if (existingIdx >= 0) {
+        const copy = [...prev];
+        copy[existingIdx] = historyItem;
+        return copy;
+      } else {
+        return [historyItem, ...prev];
+      }
+    });
+  };
+
   const handleSaveTask = (taskData) => {
     let taskId = editingItem ? editingItem.id : `task-${Date.now()}`;
     
@@ -322,6 +384,12 @@ export default function App() {
       setTasks(tasks.map(t => t.id === editingItem.id ? updatedTask : t));
     } else {
       setTasks([updatedTask, ...tasks]);
+    }
+
+    if (taskData.status === 'done') {
+      saveToTaskHistory(updatedTask);
+    } else {
+      setTaskHistory(prev => prev.filter(h => h.id !== taskId));
     }
 
     if (taskData.addToCalendar) {
@@ -360,14 +428,20 @@ export default function App() {
   };
 
   const handleToggleTaskStatus = (taskId, specificStatus = null) => {
-    setTasks(tasks.map(t => {
+    setTasks(prevTasks => prevTasks.map(t => {
       if (t.id === taskId) {
         let newStatus = specificStatus;
         if (!newStatus) {
           newStatus = t.status === 'done' ? 'to-do' : 'done';
         }
         const completedAt = newStatus === 'done' ? (t.completedAt || new Date().toISOString()) : null;
-        return { ...t, status: newStatus, completedAt };
+        const updated = { ...t, status: newStatus, completedAt };
+        if (newStatus === 'done') {
+          saveToTaskHistory(updated);
+        } else {
+          setTaskHistory(prev => prev.filter(h => h.id !== taskId));
+        }
+        return updated;
       }
       return t;
     }));
@@ -375,18 +449,57 @@ export default function App() {
   };
 
   const handleToggleSubtask = (taskId, subId) => {
-    setTasks(tasks.map(t => {
+    setTasks(prevTasks => prevTasks.map(t => {
       if (t.id === taskId) {
         const updatedSubtasks = t.subtasks.map(s => s.id === subId ? { ...s, completed: !s.completed } : s);
-        return { ...t, subtasks: updatedSubtasks };
+        const updated = { ...t, subtasks: updatedSubtasks };
+        if (t.status === 'done') {
+          saveToTaskHistory(updated);
+        }
+        return updated;
       }
       return t;
     }));
+
+    // Also update subtasks in taskHistory if present
+    setTaskHistory(prevHist => prevHist.map(h => {
+      if (h.id === taskId) {
+        const updatedSubtasks = h.subtasks ? h.subtasks.map(s => s.id === subId ? { ...s, completed: !s.completed } : s) : [];
+        return { ...h, subtasks: updatedSubtasks };
+      }
+      return h;
+    }));
   };
 
+  // Delete from active list ONLY (Preserves permanent history)
   const handleDeleteTask = (id) => {
     setTasks(tasks.filter(t => t.id !== id));
-    addToast('Tugas berhasil dihapus.');
+    addToast('Tugas dihapus dari daftar aktif. Riwayat tetap tersimpan!');
+  };
+
+  // Permanently delete from Task History
+  const handleDeleteHistoryTask = (id) => {
+    setTaskHistory(prev => prev.filter(h => h.id !== id));
+    setTasks(prev => prev.filter(t => t.id !== id || t.status !== 'done'));
+    addToast('Tugas dihapus dari Riwayat Selesai.');
+  };
+
+  // Restore task from Task History back to active To-Do list
+  const handleRestoreHistoryTask = (id) => {
+    const historyItem = taskHistory.find(h => h.id === id) || tasks.find(t => t.id === id);
+    if (historyItem) {
+      const restoredTask = { ...historyItem, status: 'to-do', completedAt: null };
+      setTaskHistory(prev => prev.filter(h => h.id !== id));
+      setTasks(prev => {
+        const exists = prev.some(t => t.id === id);
+        if (exists) {
+          return prev.map(t => t.id === id ? restoredTask : t);
+        } else {
+          return [restoredTask, ...prev];
+        }
+      });
+      addToast('Tugas dikembalikan ke daftar To-Do!');
+    }
   };
 
   const handleOpenEditTask = (task) => {
@@ -565,12 +678,15 @@ export default function App() {
         {activeTab === 'tasks' && (
           <TaskManagerView 
             tasks={tasks}
+            taskHistory={taskHistory}
             categories={categories}
             onOpenAddModal={handleOpenAddModal}
             onToggleTaskStatus={handleToggleTaskStatus}
             onToggleSubtask={handleToggleSubtask}
             onOpenEditTask={handleOpenEditTask}
             onDeleteTask={handleDeleteTask}
+            onDeleteHistoryTask={handleDeleteHistoryTask}
+            onRestoreHistoryTask={handleRestoreHistoryTask}
           />
         )}
 
